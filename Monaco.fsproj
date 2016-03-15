@@ -37,6 +37,7 @@
     <Compile Include="Math.fs" />
     <Compile Include="Mailbox.fs" />
     <Compile Include="Network.fs" />
+    <Compile Include="Economy.fs" />
     <Compile Include="Logic.fs" />
     <Compile Include="Script.fsx" />
   </ItemGroup>

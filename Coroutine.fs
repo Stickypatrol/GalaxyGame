@@ -14,7 +14,7 @@ type Coroutine<'w, 'so, 'si, 'a> = 'w -> 'so -> 'si -> Result<'w, 'so, 'si, 'a>
 and Result<'w, 'so, 'si, 'a> =
     | Done  of 'so * 'si * 'a
     | Yield of 'so * 'si * Coroutine<'w, 'so, 'si, 'a>
-    
+
 //Return operation
 let return_ x = fun w so si -> Done (so, si, x)
 
@@ -30,13 +30,13 @@ let (>>=) = bind_
 
 //The coroutine computation expression builder
 type CoroutineBuilder() =
-    member this.Return x = return_ x
-    member this.ReturnFrom c = c
-    member this.Bind (p, k) = p >>= k
+    member this.Return x       = return_ x
+    member this.ReturnFrom c   = c
+    member this.Bind (p, k)    = p >>= k
     member this.Combine (p, k) = p >>= (fun _ -> k)
-    member this.Zero () = return_ ()
-    member this.Delay a = a ()
-    member this.Run a = a
+    member this.Zero ()        = return_ ()
+    member this.Delay a        = a ()
+    member this.Run a          = a
 let co = CoroutineBuilder()
 
 //Printf something from a routine
@@ -103,11 +103,11 @@ let rec repeat_ r =
     co { do! r
          return! repeat_ r }
 
-//Repeat the routine i times
-let rec repeatFor_ i r =
+//Perform the routine i times
+let rec times_ i r =
     co { if i > 0 then
              do! r
-             return! repeatFor_ (i - 1) r
+             return! times_ (i - 1) r
          else
              return! (co { do! yield_ } |> repeat_) }
 
@@ -130,7 +130,7 @@ let rec orFactorized_ fa p k =
         | Yield (so1, si1', p') ->
             match k w so1 si2 with
             | Done (so2, si2', b)   -> Done (so2, fa.Compose (si1', si2', si3), Choice2Of2 b)
-            | Yield (so2, si2', k') -> Yield (so2, fa.Compose (si1', si2', si3), orFactorized_ fa p' k') 
+            | Yield (so2, si2', k') -> Yield (so2, fa.Compose (si1', si2', si3), orFactorized_ fa p' k')
 
 //Many concurrent routines
 let orMany_ routines =

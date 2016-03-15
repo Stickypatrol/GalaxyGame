@@ -17,8 +17,9 @@ let inline (>>|) (p : Lens<_, _>) (k : Lens<_, _>) =
     { Get = p.Get >> k.Get
       Set = k.Set >> p.Update }
 
-let (+=) (p : Lens<_, _>) v = p.Update ((+) v)
-let (-=) (p : Lens<_, _>) v = p.Update ((-) v)
-let (-*=) (p : Lens<_, _>) v = p.Update ((*) v) //Asterisk has problems with operator overloading, hence the dash
+//These functions don't work as expected, please investigate!
+let inline (+=) (p : Lens<_, _>) v = p.Update ((+) v)
+let inline (-=) (p : Lens<_, _>) v = p.Update ((-) v)
+let inline (-*=) (p : Lens<_, _>) v = p.Update ((*) v) //Asterisk has problems with operator overloading, hence the dash
 let (/=) (p : Lens<_, _>) v = p.Update ((/) v)
 let (%=) (p : Lens<_, _>) v = p.Update ((%) v) //Doesn't seem to work properly at the moment

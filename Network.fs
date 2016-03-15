@@ -93,8 +93,34 @@ let rec processIncomingMessages (peer : NetPeer) mailbox =
     let mail =
         match message with
         | null -> None
-        | _    ->
+        | _ ->
             match message.MessageType with
+            | Incoming.Data ->
+                let messageType = message.ReadInt32 ()
+                match (enum<NetMessage> messageType) with
+                | NetMessage.PeerInformation ->
+                    let byteLength = message.ReadInt32 ()
+                    let ip         = new IPAddress (message.ReadBytes (byteLength))
+                    let port       = message.ReadInt32 ()
+                    let endPoint   = new IPEndPoint (ip, port)
+                    
+                    match peer.GetConnection (endPoint) with
+                    | null ->
+                        let localHash  = peer.Configuration.LocalAddress.GetHashCode ()
+                        let localPort  = peer.Configuration.Port.GetHashCode ()
+                        let remoteHash = endPoint.Address.GetHashCode ()
+                        let remotePort = endPoint.Port.GetHashCode ()
+                        if  (localHash <> remoteHash) || (localPort <> remotePort)  then
+                            printfn "Initiating new connection to %s:%s"
+                                (endPoint.Address.ToString()) (endPoint.Port.ToString ())
+                            peer.Connect (endPoint) |> ignore
+                    | _  -> ()
+                    None
+                    
+                | _  ->
+                    printfn "Unhandled message type: %A!" messageType
+                    None
+                
             | Incoming.VerboseDebugMessage
             | Incoming.DebugMessage
             | Incoming.WarningMessage
@@ -118,7 +144,7 @@ let rec processIncomingMessages (peer : NetPeer) mailbox =
                 
             | Incoming.StatusChanged ->
                 let id     = message.SenderConnection.RemoteUniqueIdentifier.ToString ()
-                let status = enum<NetConnectionStatus> (message.ReadInt32 ()) //(message.ReadByte ())
+                let status = enum<NetConnectionStatus> (message.ReadInt32 ())
                 if status = NetConnectionStatus.Connected then
                     let reason = message.SenderConnection.RemoteHailMessage.ReadString ()
                     printfn "%s reports: %A - %s" id status reason
@@ -127,47 +153,6 @@ let rec processIncomingMessages (peer : NetPeer) mailbox =
             | Incoming.UnconnectedData ->
                 printfn "Unconnected data: %s" (message.ReadString ())
                 None
-
-            | Incoming.Data ->
-                let messageType = message.ReadInt32 ()
-                match (enum<NetMessage> messageType) with
-                | NetMessage.PeerInformation ->
-                    let byteLength = message.ReadInt32 ()
-                    let ip         = new IPAddress (message.ReadBytes (byteLength))
-                    let port       = message.ReadInt32 ()
-                    let endPoint   = new IPEndPoint (ip, port)
-                        
-                    match peer.GetConnection (endPoint) with
-                    | null ->
-                        let localHash  = peer.Configuration.LocalAddress.GetHashCode ()
-                        let localPort  = peer.Configuration.Port.GetHashCode ()
-                        let remoteHash = endPoint.Address.GetHashCode ()
-                        let remotePort = endPoint.Port.GetHashCode ()
-                        if  (localHash <> remoteHash) || (localPort <> remotePort)  then
-                            printfn "Initiating new connection to %s:%s"
-                                (endPoint.Address.ToString()) (endPoint.Port.ToString ())
-                            peer.Connect (endPoint) |> ignore
-                    | _  -> ()
-                    None
-                (*    
-                | MessageType.NewPlayerSlave ->
-                    printfn "Receiving player creation with ID %A" id
-                    let id = message.ReadInt32 ()
-                    let pos_x  = message.ReadFloat ()
-                    let pos_y  = message.ReadFloat ()
-                    Some (NewPlayerSlave (id, Vector2 (pos_x, pos_y))) //Add message to the mailbox
-                    
-                | MessageType.Transform ->
-                    let target       = message.ReadInt32 ()
-                    let pos_x        = message.ReadFloat ()
-                    let pos_y        = message.ReadFloat ()
-                    let orientation  = message.ReadFloat ()
-                    let scale        = message.ReadFloat ()
-                    Some (Transform (target, Vector2 (pos_x, pos_y), double orientation, double scale)) //Add message to the mailbox
-                *)    
-                | _  ->
-                    printfn "Unhandled message type: %A!" messageType
-                    None
             
             | _ ->
                 printfn "Unhandled message type: %A! %s" message.MessageType (message.ReadString ())
@@ -177,7 +162,8 @@ let rec processIncomingMessages (peer : NetPeer) mailbox =
         peer.Recycle message
         match mail with
         | Some m ->
-            processIncomingMessages peer { mailbox with Inbox = m :: mailbox.Inbox }
+            let mailbox' = Mailbox.Receive mailbox (fst m) (snd m)
+            processIncomingMessages peer mailbox'
         | None -> processIncomingMessages peer mailbox
     else
         mailbox
@@ -185,7 +171,7 @@ let rec processIncomingMessages (peer : NetPeer) mailbox =
 //Send messages to all peers
 let processOutgoingMessages (peer : NetPeer) mailbox =
     let outbox = mailbox.Outbox
-    if List.isEmpty outbox then
+    if Map.isEmpty outbox then
         mailbox
     else
         match peer.Connections with
