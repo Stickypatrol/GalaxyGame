@@ -9,17 +9,7 @@ open Lens
 
 //All accepted types of messages
 type Mail = 
-    | NewButton     of int * Rect * string
-    | NewCube       of Vector3
-    | NewCharacter  of string * string * Vector3 * bool
-    | SyncTransform of int * Vector3 * Vector3 * Vector3
-    | Destroy       of int
-    | GUIBox        of int * Rect * string
-    | GUIButton     of int * int * Rect * string
-    | GUITexture    of int * Rect * Texture2D
-    | GUILabel      of int * Rect * GUIContent
-    | GUITextArea   of int * Rect * string
-    | GUITextField  of int * Rect * string
+    | NewButton of int * Rect * string
 
 //Incoming or outgoing
 type MailboxType =
