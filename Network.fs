@@ -6,7 +6,7 @@ module Network
 
 open System.Net
 open Lidgren.Network
-open Math
+open Auxiliary
 open Mailbox
 
 //Mode of operation, create sets up a new network

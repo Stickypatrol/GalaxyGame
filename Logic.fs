@@ -7,10 +7,10 @@ namespace Monaco
 open UnityEngine
 open Lidgren.Network
 open Coroutine
-open Lens
-open Math
+open Auxiliary
 open Mailbox
 open Network
+open System
 
 //This component should be added to a Unity Game Controller object
 type MonacoLogic () =
@@ -43,14 +43,7 @@ type MonacoLogic () =
         List.fold attemptLoad List.empty filenames |> Map.ofList
 
     member this.Start () =
-        state <- State.Initialize state mode localPort remotePort maxCons
-
-        (*
-        let prefabFilenames = [ "PrefabBoy"
-                                "PrefabGirl"
-                                "PrefabClock" ]
-        state <- State.SetPrefabs state (this.LoadPrefabs prefabFilenames)
-        *)
+        state //<- State.Initialize state mode localPort remotePort maxCons
 
     member this.Update () =
         state <- State.Update Time.deltaTime state
@@ -58,7 +51,7 @@ type MonacoLogic () =
             Application.Quit ()
 
     member this.OnGUI () =
-        state <- State.OnGUI state
+        state //<- State.OnGUI state
 
 //Global game object container
 and Entity<'w, 'fs, 'mailbox> =
@@ -88,53 +81,97 @@ and Entity<'w, 'fs, 'mailbox> =
 
 //The global game state
 and State =
-    { Mailbox    : Mailbox
-      ExitFlag   : bool
-      NetConfig  : NetPeerConfiguration Option
-      NetPeer    : NetPeer Option
-      Prefabs    : Map<string, GameObject> } with
+    {
+      Planets     : List<Entity<State, PlanetFields, Mailbox>> //add the planets here
+      Ships       : List<Entity<State, ShipFields, Mailbox>>  //add the ships here
+      IDList      : List<int>
+      Mailbox     : Mailbox
+      Random      : Random
+      ExitFlag    : bool
+      NetConfig   : NetPeerConfiguration Option
+      NetPeer     : NetPeer Option
+      Prefabs     : Map<string, GameObject>
+    } with
     static member Zero =
-        { Mailbox    = Mailbox.Zero
-          ExitFlag   = false
-          NetConfig  = None
-          NetPeer    = None
-          Prefabs    = Map.empty }
-
-    static member Initialize s mode localPort remotePort maxCons =
-        s
-
-    static member Terminate s =
-        s
-
-    static member SetPrefabs s prefabs =
-        { s with Prefabs = prefabs }
-
-    static member StartNetworking s mode localPort remotePort maxCons =
-        s
-
-    static member StopNetworking s =
-        s
-
-    static member SendMail s =
-        s
-
-    static member ReceiveMail s =
-        s
-
-    static member UpdateEntities dt s =
-        s
-
-    static member Emerge s =
-        s
-
-    static member Cleanse s =
-        s
-
+      {
+        Planets     = []
+        Ships       = []
+        IDList      = []
+        Mailbox     = Mailbox.Zero
+        Random      = new Random()
+        ExitFlag    = false
+        NetConfig   = None
+        NetPeer     = None
+        Prefabs     = Map.empty
+      }
+    static member Example =
+      {
+        Planets     = [{};{}]
+        Ships       = []
+        IDList      = []
+        Mailbox     = Mailbox.Zero
+        Random      = new Random()
+        ExitFlag    = false
+        NetConfig   = None
+        NetPeer     = None
+        Prefabs     = Map.empty
+      }
     static member Update dt s =
         if Input.GetKey (KeyCode.Escape) then
             { s with ExitFlag = true }
         else
             s
-
-    static member OnGUI s =
-        s
+and PlanetFields =
+    {
+      ID          : int
+      Owner       : int
+      GameObject  : GameObject
+      Attack      : int
+      Defense     : int
+      Research    : int
+      Neighbours  : List<int>
+    }with
+    static member Zero (id:int) =
+      let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
+      ignore <| go.AddComponent<CircleCollider2D>()
+      ignore <| go.AddComponent<Transform>()
+      {
+        ID = id
+        Owner = -1
+        GameObject = go //make a transform and a collider of istrigger type
+        Attack = 0
+        Defense = 0
+        Research = 0
+        Neighbours = []
+      }
+and ShipFields =
+    {
+      ID          : int
+      Owner       : int
+      GameObject  : GameObject
+      Attack      : float
+      Target      : Option<int> //this target is where the troop is going or what its attacking IF ITS WITHIN ATTACK RANGE
+    }with
+    static member Zero (id:int) =
+      let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
+      ignore <| go.AddComponent<CircleCollider2D>()
+      ignore <| go.AddComponent<Transform>()
+      {
+        ID = id
+        Owner = -1
+        GameObject = go
+        Attack = 0.0
+        Target = None
+      }
+    static member CreateNew(x,y) =
+      let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
+      ignore <| go.AddComponent<CircleCollider2D>()
+      ignore <| go.AddComponent<Transform>()
+      go.transform.Translate(x, y, 0.0f)
+      {
+        ID = id
+        Owner = -1
+        GameObject = go
+        Attack = 0.0
+        Target = None
+      }

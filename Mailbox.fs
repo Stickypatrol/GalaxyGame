@@ -5,10 +5,9 @@
 module Mailbox
 
 open UnityEngine
-open Lens
 
 //All accepted types of messages
-type Mail = 
+type Mail =
     | NewButton of int * Rect * string
 
 //Incoming or outgoing
@@ -52,9 +51,3 @@ type Mailbox =
                 Mailbox.Receive mailbox id mail
         | None ->
             Mailbox.Receive mailbox id mail
-    static member inbox =
-        { Get = fun (x : Mailbox) -> x.Inbox
-          Set = fun v (x : Mailbox) -> {x with Inbox = v} }
-    static member outbox =
-        { Get = fun (x : Mailbox) -> x.Outbox
-          Set = fun v (x : Mailbox) -> {x with Outbox = v} }
