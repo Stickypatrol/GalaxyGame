@@ -49,21 +49,15 @@ type MonacoLogic () =
         state <- State.Update Time.deltaTime state
         if state.ExitFlag then
             Application.Quit ()
-
-    member this.OnGUI () =
-        state //<- State.OnGUI state
-
 //Global game object container
 and Entity<'w, 'fs, 'mailbox> =
     { Fields     : 'fs
       Rules      : List<'w -> 'fs -> float32 -> 'fs>
-      Scripts    : Coroutine<'w, 'mailbox, 'fs, unit>
-      GUIScripts : Coroutine<'w, 'mailbox, 'fs, unit> } with
-    static member Create (fields, rules, scripts, guiScripts) =
+      Scripts    : Coroutine<'w, 'mailbox, 'fs, unit>} with
+    static member Create (fields, rules, scripts) =
         { Fields     = fields
           Rules      = rules
-          Scripts    = andPassMany_ scripts
-          GUIScripts = andPassMany_ guiScripts }
+          Scripts    = andPassMany_ scripts}
 
     member this.Update (world, mailbox, dt) =
         let fsRules = this.Rules |> List.fold (fun fs rule -> rule world fs dt) this.Fields
@@ -72,13 +66,12 @@ and Entity<'w, 'fs, 'mailbox> =
             Fields  = fsScripts
             Rules   = this.Rules
             Scripts = scripts' }, mailbox'
-
-    member this.OnGUI (world, mailbox) =
-        let mailbox', fs', guiScripts' = step_ (this.GUIScripts world mailbox this.Fields)
-        { this with
-            Fields     = fs'
-            GUIScripts = guiScripts' }, mailbox'
-
+    static member PlanetZero () =
+        {
+          Fields = PlanetFields.Zero()
+          Rules = PlanetFields.Rules
+          Scripts = PlanetFields.Scripts
+        }
 //The global game state
 and State =
     {
@@ -104,9 +97,9 @@ and State =
         NetPeer     = None
         Prefabs     = Map.empty
       }
-    static member Example =
+    static member Example() =
       {
-        Planets     = [{};{}]
+        Planets     = []
         Ships       = []
         IDList      = []
         Mailbox     = Mailbox.Zero
@@ -121,7 +114,7 @@ and State =
             { s with ExitFlag = true }
         else
             s
-and PlanetFields =
+and PlanetFields = //we need a way to generate a graph of Entity<State, PlanetFields, Mailbox> with a bunch of neighbours and such
     {
       ID          : int
       Owner       : int
@@ -131,12 +124,12 @@ and PlanetFields =
       Research    : int
       Neighbours  : List<int>
     }with
-    static member Zero (id:int) =
+    static member Zero() =
       let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
       ignore <| go.AddComponent<CircleCollider2D>()
       ignore <| go.AddComponent<Transform>()
       {
-        ID = id
+        ID = -1
         Owner = -1
         GameObject = go //make a transform and a collider of istrigger type
         Attack = 0
@@ -144,26 +137,34 @@ and PlanetFields =
         Research = 0
         Neighbours = []
       }
+    static member Move p (x, y) =
+      ignore <| p.GameObject.transform.Translate(Vector3(x,y,0.0f))
+      p
+    static member Rules =
+      List<(State -> PlanetFields -> float32 -> PlanetFields)>.Empty
+    static member Scripts =
+      let x : Coroutine<State, Mailbox, PlanetFields, Unit> = co{do! yield_}
+      x
 and ShipFields =
     {
-      ID          : int
+      ID          : int 
       Owner       : int
       GameObject  : GameObject
       Attack      : float
       Target      : Option<int> //this target is where the troop is going or what its attacking IF ITS WITHIN ATTACK RANGE
     }with
-    static member Zero (id:int) =
+    static member Zero =
       let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
       ignore <| go.AddComponent<CircleCollider2D>()
       ignore <| go.AddComponent<Transform>()
       {
-        ID = id
+        ID = -1
         Owner = -1
         GameObject = go
         Attack = 0.0
         Target = None
       }
-    static member CreateNew(x,y) =
+    static member CreateAt(id, x,y) =
       let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
       ignore <| go.AddComponent<CircleCollider2D>()
       ignore <| go.AddComponent<Transform>()
