@@ -66,29 +66,94 @@ and Entity<'w, 'fs, 'mailbox> =
             Fields  = fsScripts
             Rules   = this.Rules
             Scripts = scripts' }, mailbox'
-    static member PlanetZero () =
-        {
-          Fields = PlanetFields.Zero()
-          Rules = PlanetFields.Rules
-          Scripts = PlanetFields.Scripts
-        }
+    static member CheckPointZero() =
+      Entity<State, CheckpointFields, Mailbox>.Create((CheckpointFields.Zero()), CheckpointFields.Rules, CheckpointFields.Scripts)
+    static member PingZero() =
+      Entity<State, PingFields, Mailbox>.Create ((PingFields.Zero()),
+                                                  PingFields.Rules,
+                                                  PingFields.Scripts)
+
+and CheckpointFields = //we need a way to generate a graph of Entity<State, PlanetFields, Mailbox> with a bunch of neighbours and such
+    {
+      ID          : int
+      Owner       : int
+      GameObject  : GameObject
+      //optional Research    : int
+      Neighbours  : List<int>
+    }with
+    static member Zero() =
+      let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
+      ignore <| go.AddComponent<CircleCollider2D>()
+      ignore <| go.AddComponent<Transform>()
+      {
+        ID = -1
+        Owner = -1
+        Neighbours = []
+        GameObject = go //make a transform and a collider of istrigger type
+      }
+    static member Move p (x, y) =
+      ignore <| p.GameObject.transform.Translate(Vector3(x,y,0.0f))
+      p
+    static member Rules =
+      List<State -> CheckpointFields -> float32 -> CheckpointFields>.Empty//example stuff
+    static member Scripts : Coroutine<State, Mailbox, CheckpointFields, Unit> list=
+      [(co{return ()})]
+
+and PingFields =
+    {
+      ID          : int 
+      Owner       : int
+      Velocity    : Vector2
+      GameObject  : GameObject
+    }with
+    static member Zero() : PingFields =
+      let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
+      ignore <| go.AddComponent<CircleCollider2D>()
+      ignore <| go.AddComponent<Transform>()
+      {
+        ID = -1
+        Owner = -1
+        GameObject = go
+        Velocity = Vector2.zero
+      }
+    static member Move p (v:Vector2) =
+      ignore <| p.GameObject.transform.Translate(Vector3(v.x,v.y,0.0f))
+      p
+    static member Rules =
+      [(fun s p dt -> PingFields.Move p p.Velocity)]
+    static member Scripts : Coroutine<State, Mailbox, PingFields, Unit> list=
+      [(co{return ()})]
+    static member CreateAt(id, x,y) =
+      let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
+      ignore <| go.AddComponent<CircleCollider2D>()
+      ignore <| go.AddComponent<Transform>()
+      go.transform.Translate(x, y, 0.0f)
+      {
+        ID = id
+        Owner = -1
+        GameObject = go
+        Velocity = Vector2.zero
+      }
+
 //The global game state
 and State =
     {
-      Planets     : List<Entity<State, PlanetFields, Mailbox>> //add the planets here
-      Ships       : List<Entity<State, ShipFields, Mailbox>>  //add the ships here
+      CheckPoints : List<Entity<State, CheckpointFields, Mailbox>> //add the planets here
+      Pings       : List<Entity<State, PingFields, Mailbox>>  //add the ships here
       IDList      : List<int>
       Mailbox     : Mailbox
       Random      : Random
       ExitFlag    : bool
       NetConfig   : NetPeerConfiguration Option
       NetPeer     : NetPeer Option
-      Prefabs     : Map<string, GameObject>
+      Prefabs     : Map<string, GameObject> //we need some GUI shit in the state as well, sjors' responsibility
     } with
     static member Zero =
+      //below is just some example stuff
+      let baseCP = CheckpointFields.Zero()
       {
-        Planets     = []
-        Ships       = []
+        CheckPoints = [Entity.Create(baseCP.GameObject.transform.Translate(Vector2(100.0f, -100.0f)), CheckpointFields.Rules, CheckpointFields.Scripts)]
+        Pings       = []
         IDList      = []
         Mailbox     = Mailbox.Zero
         Random      = new Random()
@@ -97,10 +162,10 @@ and State =
         NetPeer     = None
         Prefabs     = Map.empty
       }
-    static member Example() =
+    static member Example() = //this is only used for an example of setting up the game
       {
-        Planets     = []
-        Ships       = []
+        CheckPoints = [(Entity<State,CheckpointFields, Mailbox>.CheckPointZero())]
+        Pings       = []
         IDList      = []
         Mailbox     = Mailbox.Zero
         Random      = new Random()
@@ -114,65 +179,3 @@ and State =
             { s with ExitFlag = true }
         else
             s
-and PlanetFields = //we need a way to generate a graph of Entity<State, PlanetFields, Mailbox> with a bunch of neighbours and such
-    {
-      ID          : int
-      Owner       : int
-      GameObject  : GameObject
-      Attack      : int
-      Defense     : int
-      Research    : int
-      Neighbours  : List<int>
-    }with
-    static member Zero() =
-      let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
-      ignore <| go.AddComponent<CircleCollider2D>()
-      ignore <| go.AddComponent<Transform>()
-      {
-        ID = -1
-        Owner = -1
-        GameObject = go //make a transform and a collider of istrigger type
-        Attack = 0
-        Defense = 0
-        Research = 0
-        Neighbours = []
-      }
-    static member Move p (x, y) =
-      ignore <| p.GameObject.transform.Translate(Vector3(x,y,0.0f))
-      p
-    static member Rules =
-      List<(State -> PlanetFields -> float32 -> PlanetFields)>.Empty
-    static member Scripts =
-      let x : Coroutine<State, Mailbox, PlanetFields, Unit> = co{do! yield_}
-      x
-and ShipFields =
-    {
-      ID          : int 
-      Owner       : int
-      GameObject  : GameObject
-      Attack      : float
-      Target      : Option<int> //this target is where the troop is going or what its attacking IF ITS WITHIN ATTACK RANGE
-    }with
-    static member Zero =
-      let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
-      ignore <| go.AddComponent<CircleCollider2D>()
-      ignore <| go.AddComponent<Transform>()
-      {
-        ID = -1
-        Owner = -1
-        GameObject = go
-        Attack = 0.0
-        Target = None
-      }
-    static member CreateAt(id, x,y) =
-      let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
-      ignore <| go.AddComponent<CircleCollider2D>()
-      ignore <| go.AddComponent<Transform>()
-      go.transform.Translate(x, y, 0.0f)
-      {
-        ID = id
-        Owner = -1
-        GameObject = go
-        Attack = 0.0
-        Target = None
-      }
