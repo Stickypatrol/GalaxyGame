@@ -43,9 +43,10 @@ type MonacoLogic () =
         List.fold attemptLoad List.empty filenames |> Map.ofList
 
     member this.Start () =
-        state //<- State.Initialize state mode localPort remotePort maxCons
+        state <- {state with Prefabs = this.LoadPrefabs ["Checkpoint";]}
 
     member this.Update () =
+        Debug.Log(state)
         state <- State.Update Time.deltaTime state
         if state.ExitFlag then
             Application.Quit ()
@@ -77,23 +78,22 @@ and CheckpointFields = //we need a way to generate a graph of Entity<State, Plan
     {
       ID          : int
       Owner       : int
-      GameObject  : GameObject
+      GameObject  : Option<GameObject>
       //optional Research    : int
       Neighbours  : List<int>
     }with
     static member Zero() =
-      let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
-      ignore <| go.AddComponent<CircleCollider2D>()
-      ignore <| go.AddComponent<Transform>()
       {
         ID = -1
         Owner = -1
         Neighbours = []
-        GameObject = go //make a transform and a collider of istrigger type
+        GameObject = None
       }
-    static member Move p (x, y) =
-      ignore <| p.GameObject.transform.Translate(Vector3(x,y,0.0f))
-      p
+    static member Move p (v:Vector2) =
+      match p.GameObject with
+      | Some(go) -> go.transform.Translate(Vector3(v.x,v.y,0.0f))
+                    p
+      | None -> p
     static member Rules =
       List<State -> CheckpointFields -> float32 -> CheckpointFields>.Empty//example stuff
     static member Scripts : Coroutine<State, Mailbox, CheckpointFields, Unit> list=
@@ -104,23 +104,27 @@ and PingFields =
       ID          : int 
       Owner       : int
       Velocity    : Vector2
-      GameObject  : GameObject
+      GameObject  : Option<GameObject>
     }with
+    member this.ApplyVelocity() =
+      match this.GameObject with
+      | Some(go) -> go.transform.Translate(this.Velocity.x, this.Velocity.y, 0.0f)
+                    this
+      | None -> this
     static member Zero() : PingFields =
-      let go = GameObject.CreatePrimitive(PrimitiveType.Cube)
-      ignore <| go.AddComponent<CircleCollider2D>()
-      ignore <| go.AddComponent<Transform>()
       {
         ID = -1
         Owner = -1
-        GameObject = go
+        GameObject = None
         Velocity = Vector2.zero
       }
     static member Move p (v:Vector2) =
-      ignore <| p.GameObject.transform.Translate(Vector3(v.x,v.y,0.0f))
-      p
+      match p.GameObject with
+      | Some(go) -> go.transform.Translate(Vector3(v.x,v.y,0.0f))
+                    p
+      | None -> p
     static member Rules =
-      [(fun s p dt -> PingFields.Move p p.Velocity)]
+      [(fun s p dt -> p.ApplyVelocity())]
     static member Scripts : Coroutine<State, Mailbox, PingFields, Unit> list=
       [(co{return ()})]
     static member CreateAt(id, x,y) =
@@ -131,7 +135,7 @@ and PingFields =
       {
         ID = id
         Owner = -1
-        GameObject = go
+        GameObject = Some(go)
         Velocity = Vector2.zero
       }
 
@@ -150,9 +154,8 @@ and State =
     } with
     static member Zero =
       //below is just some example stuff
-      let baseCP = CheckpointFields.Zero()
       {
-        CheckPoints = [Entity.Create(baseCP.GameObject.transform.Translate(Vector2(100.0f, -100.0f)), CheckpointFields.Rules, CheckpointFields.Scripts)]
+        CheckPoints = []
         Pings       = []
         IDList      = []
         Mailbox     = Mailbox.Zero
@@ -164,7 +167,8 @@ and State =
       }
     static member Example() = //this is only used for an example of setting up the game
       {
-        CheckPoints = [(Entity<State,CheckpointFields, Mailbox>.CheckPointZero())]
+        CheckPoints = [ (Entity<State,CheckpointFields, Mailbox>.CheckPointZero());
+                        (Entity<State,CheckpointFields, Mailbox>.CheckPointZero())] //this is how we make 2 entities at the start of the state of the game
         Pings       = []
         IDList      = []
         Mailbox     = Mailbox.Zero
