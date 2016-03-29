@@ -1,11 +1,10 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>3c9edc04-1d3a-4a5e-8334-37f72d277e1a</ProjectGuid>
+    <ProjectGuid>{3C9EDC04-1D3A-4A5E-8334-37F72D277E1A}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Monaco</RootNamespace>
     <AssemblyName>Monaco</AssemblyName>
@@ -19,7 +18,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
-    <OutputPath>C:\Users\Public\Documents\Unity Projects\PracticeGalaxyWarsProject\Assets\Framework\</OutputPath>
+    <OutputPath>bin\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\Debug\Monaco.XML</DocumentationFile>
@@ -28,33 +27,32 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
-    <OutputPath>C:\Users\Public\Documents\Unity Projects\PracticeGalaxyWarsProject\Assets\Framework\</OutputPath>
+    <OutputPath>bin\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\Release\Monaco.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Lidgren.Network">
-      <HintPath>C:\Users\Bob\Documents\Visual Studio 2015\Projects\Monaco\Monaco\Lidgren.Network.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Private>True</Private>
+    <Reference Include="mscorlib">
+      <HintPath>mscorlib.dll</HintPath>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.Core" />
+    <Reference Include="FSharp.Core">
+      <HintPath>FSharp.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Lidgren.Network">
+      <HintPath>Lidgren.Network.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>C:\Users\Bob\Documents\Visual Studio 2015\Projects\Monaco\Monaco\UnityEngine.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>UnityEngine.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Auxiliary.fs" />
     <Compile Include="Coroutine.fs" />
-    <Compile Include="Mailbox.fs" />
-    <Compile Include="Network.fs" />
+    <Compile Include="Mail.fs" />
+    <Compile Include="Contact.fs" />
     <Compile Include="Logic.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>

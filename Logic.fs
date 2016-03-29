@@ -8,8 +8,8 @@ open UnityEngine
 open Lidgren.Network
 open Coroutine
 open Auxiliary
-open Mailbox
-open Network
+open Mail
+open Contact
 open System
 
 //This component should be added to a Unity Game Controller object
@@ -18,15 +18,19 @@ type MonacoLogic () =
 
     [<Header ("Connection settings")>]
     [<SerializeField>]
+    /// <summary>Mode</summary>
     let mutable mode       = NetMode.Create
 
     [<SerializeField>]
+    /// <summary>Local port</summary>
     let mutable localPort  = 8888
 
     [<SerializeField>]
+    /// <summary>Remote port</summary>
     let mutable remotePort = 9999
 
     [<SerializeField>]
+    /// <summary>Maximum connections</summary>
     let mutable maxCons    = 128
 
     //The base game state
@@ -38,7 +42,7 @@ type MonacoLogic () =
                 let gameObject = Resources.Load<GameObject> ("Prefabs/" + filename)
                 match gameObject with
                 | null -> Debug.LogError ("Failed to load prefab " + filename); acc
-                | _ -> (filename, gameObject) :: acc
+                | _    -> (filename, gameObject) :: acc
 
         List.fold attemptLoad List.empty filenames |> Map.ofList
 
@@ -50,6 +54,7 @@ type MonacoLogic () =
         state <- State.Update Time.deltaTime state
         if state.ExitFlag then
             Application.Quit ()
+            
 //Global game object container
 and Entity<'w, 'fs, 'mailbox> =
     { Fields     : 'fs
@@ -59,7 +64,6 @@ and Entity<'w, 'fs, 'mailbox> =
         { Fields     = fields
           Rules      = rules
           Scripts    = andPassMany_ scripts}
-
     member this.Update (world, mailbox, dt) =
         let fsRules = this.Rules |> List.fold (fun fs rule -> rule world fs dt) this.Fields
         let mailbox', fsScripts, scripts' = step_ (this.Scripts world mailbox fsRules)
@@ -145,11 +149,9 @@ and State =
       CheckPoints : List<Entity<State, CheckpointFields, Mailbox>> //add the planets here
       Pings       : List<Entity<State, PingFields, Mailbox>>  //add the ships here
       IDList      : List<int>
-      Mailbox     : Mailbox
+      Networking  : ContactSession
       Random      : Random
       ExitFlag    : bool
-      NetConfig   : NetPeerConfiguration Option
-      NetPeer     : NetPeer Option
       Prefabs     : Map<string, GameObject> //we need some GUI shit in the state as well, sjors' responsibility
     } with
     static member Zero =
@@ -158,26 +160,16 @@ and State =
         CheckPoints = []
         Pings       = []
         IDList      = []
-        Mailbox     = Mailbox.Zero
+        Networking  = ContactSession.Zero
         Random      = new Random()
         ExitFlag    = false
-        NetConfig   = None
-        NetPeer     = None
         Prefabs     = Map.empty
       }
     static member Example() = //this is only used for an example of setting up the game
-      {
-        CheckPoints = [ (Entity<State,CheckpointFields, Mailbox>.CheckPointZero());
-                        (Entity<State,CheckpointFields, Mailbox>.CheckPointZero())] //this is how we make 2 entities at the start of the state of the game
-        Pings       = []
-        IDList      = []
-        Mailbox     = Mailbox.Zero
-        Random      = new Random()
-        ExitFlag    = false
-        NetConfig   = None
-        NetPeer     = None
-        Prefabs     = Map.empty
-      }
+        { State.Zero with
+              CheckPoints = [ (Entity<State,CheckpointFields, Mailbox>.CheckPointZero());
+                              (Entity<State,CheckpointFields, Mailbox>.CheckPointZero())] //this is how we make 2 entities at the start of the state of the game
+        }
     static member Update dt s =
         if Input.GetKey (KeyCode.Escape) then
             { s with ExitFlag = true }
