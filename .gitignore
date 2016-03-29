@@ -33,6 +33,10 @@
 .\#*
 *.suo
 app
+*.mdb
+*.optdata
+*.sigdata
+*.xml
 
 /[Ll]ibrary/
 /[Tt]emp/
